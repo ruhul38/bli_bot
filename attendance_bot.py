@@ -19,22 +19,19 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 local_timezone = tzlocal.get_localzone()
 
 # Google Sheets setup
-# scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-# creds = ServiceAccountCredentials.from_json_keyfile_name('path/to/your/credentials.json', scope)
-# client = gspread.authorize(creds)
-# sheet = client.open("Your Google Sheet Name").sheet1  # Open the first sheet
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name('composed-garden-428307-h9-de6905d7d7b0.json', scope)
+client = gspread.authorize(creds)
+print("authorized")
+sheet = client.open("bli_employee_log").sheet1 
+print(sheet.url)# Open the first sheet
+print(client.open("record001").title)# Open the first sheet
 
 # Predefined keywords for autocomplete
 keywords = ["singing", "break", "back", "dancing", "coding"]
 
 def utc_to_local(utc_dt):
     return utc_dt.replace(tzinfo=timezone.utc).astimezone(local_timezone)
-
-
-
-
-
-    
 
 class MyBot(commands.Cog):
     def __init__(self, bot):
@@ -75,7 +72,7 @@ class MyBot(commands.Cog):
             attendance_list.append([member.display_name, formatted_time])
 
         # Log attendance to Google Sheets
-        # sheet.append_row(["Name", "Joined At"])
+        # sheet.append_row(["Name", "Joined At", ])
         # for entry in attendance_list:
         #     sheet.append_row(entry)
 
@@ -98,10 +95,11 @@ async def on_message(message):
     # Prevent the bot from responding to its own messages
     if message.author == bot.user:
         return
+    created_at = utc_to_local(datetime.strptime(message.created_at.strftime("%Y-%m-%d %H:%M:%S%z"),"%Y-%m-%d %H:%M:%S%z")).strftime("%d/%m/%Y %I:%M%p")
 
     # Regular expression to match the various status formats
     match = re.match(r'(signedIn|signedOut|breakStarted|breakEnded)@(\d{2}:\d{2}[ap]m)', message.content)
-    
+    attendance_list=[]
     if match:
         status = match.group(1)
         
@@ -119,7 +117,17 @@ async def on_message(message):
         logging_channel = bot.get_channel(logging_channel_id)
         if logging_channel:
             await logging_channel.send(f'Message from {message.author} at {created_at}: {status} at {time_obj}')
-            
+            attendance_list.append([message.author.global_name,message.author.name, utc_to_local(message.created_at).strftime("%d %b %y"),utc_to_local(message.created_at).strftime("%I:%M%p"), status, time_obj.strftime("%I:%M%p")])
+            print(attendance_list)
+                # Log attendance to Google Sheets
+                # sheet.append_row(["Id", "Joined At"])
+            for entry in attendance_list:
+                sheet.append_row(entry)
+                print(sheet.get())
+
+                # print(sheet.get("A1"))
+
+                print(f"Attendance has been logged to the Google Sheet.")
         
         await bot.process_commands(message)
     else:
@@ -133,14 +141,28 @@ async def on_message(message):
             logging_channel = bot.get_channel(logging_channel_id)
             if logging_channel:
                 await logging_channel.send(f'Message from {message.author} at {created_at}: {status} at {time_obj}')
+                attendance_list.append([message.author.global_name,message.author.name, message.created_at.strftime("%d %b %y"),message.created_at.strftime("%I:%M%p"), message.content, message.created_at.strftime("%I:%M%p")])
+                print(attendance_list)
+                # Log attendance to Google Sheets
+                # sheet.append_row(["Id", "Joined At"])
+            for entry in attendance_list:
+                sheet.append_row(entry)
+                print(sheet.get())
+
+                # print(sheet.get("A1"))
+
+                print(f"Attendance has been logged to the Google Sheet.")
         else:
             logging_channel_id = 1257575721593864285  # replace with your channel ID
             logging_channel = bot.get_channel(logging_channel_id)
             if logging_channel:
                 await logging_channel.send(f'Sorry! I haven\'t recognized it')
+        
+
 
         await bot.process_commands(message)
 
+    
     # Process commands if any
 
 
